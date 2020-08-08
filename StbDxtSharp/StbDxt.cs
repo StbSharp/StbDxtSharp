@@ -63,9 +63,9 @@ namespace StbSharp
 				{
 					var p = resultPtr;
 
-					for (var j = 0; j < width; j += 4)
+					for (var j = 0; j < height; j += 4)
 					{
-						for (var i = 0; i < height; i += 4)
+						for (var i = 0; i < width; i += 4)
 						{
 							for (var y = 0; y < 4; ++y)
 							{
@@ -85,12 +85,12 @@ namespace StbSharp
 
 		public static byte[] CompressDxt1(int width, int height, byte[] data)
 		{
-			return CompressDxt(width, height, data, false, CompressionMode.Dithered);
+			return CompressDxt(width, height, data, false, CompressionMode.None);
 		}
 
 		public static byte[] CompressDxt5(int width, int height, byte[] data)
 		{
-			return CompressDxt(width, height, data, true, CompressionMode.HighQuality);
+			return CompressDxt(width, height, data, true, CompressionMode.None);
 		}
 	}
 }

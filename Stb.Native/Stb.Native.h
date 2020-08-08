@@ -33,10 +33,10 @@ namespace StbNative {
 			unsigned char *p = op;
 
 			unsigned char block[16 * 4];
-			for (int j = 0; j < w; j += 4)
+			for (int j = 0; j < h; j += 4)
 			{
 				int x = 4;
-				for (int i = 0; i < h; i += 4)
+				for (int i = 0; i < w; i += 4)
 				{
 					int y;
 					for (y = 0; y < 4; ++y)
@@ -45,7 +45,7 @@ namespace StbNative {
 						memcpy(block + y * 16, rgba + w * 4 * (j + y) + i * 4, x * 4);
 					}
 					
-					stb_compress_dxt_block(p, block, hasAlpha ? 1 : 0, 10);
+					stb_compress_dxt_block(p, block, hasAlpha ? 1 : 0, 0);
 					p += hasAlpha ? 16 : 8;
 				}
 			}
