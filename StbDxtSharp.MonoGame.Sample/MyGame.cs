@@ -35,8 +35,8 @@ namespace ConsoleApp1
 				var ir = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
 
 				// Compress it
-				// var compressedData = StbDxt.CompressDxt5(ir.Width, ir.Height, ir.Data);
-				var compressedData = Native.compress_dxt(ir.Data, ir.Width, ir.Height, true);
+				var compressedData = StbDxt.CompressDxt5(ir.Width, ir.Height, ir.Data);
+				//var compressedData = Native.compress_dxt(ir.Data, ir.Width, ir.Height, false);
 
 				_textureOriginal = new Texture2D(GraphicsDevice, ir.Width, ir.Height);
 				_textureOriginal.SetData(ir.Data);
