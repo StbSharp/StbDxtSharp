@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Graphics;
 using StbImageSharp;
 using StbSharp;
+using StbNative;
 
 namespace ConsoleApp1
 {
@@ -34,15 +35,14 @@ namespace ConsoleApp1
 				var ir = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
 
 				// Compress it
-				var compressedData = StbDxt.stb_compress_dxt(ir.Width, ir.Height, ir.Data, true, CompressionMode.HighQuality);
-
-				var decompressed = DxtUtil.DecompressDxt5(compressedData, ir.Width, ir.Height);
+				// var compressedData = StbDxt.CompressDxt5(ir.Width, ir.Height, ir.Data);
+				var compressedData = Native.compress_dxt(ir.Data, ir.Width, ir.Height, true);
 
 				_textureOriginal = new Texture2D(GraphicsDevice, ir.Width, ir.Height);
 				_textureOriginal.SetData(ir.Data);
 
-				_textureDecompressed = new Texture2D(GraphicsDevice, ir.Width, ir.Height);
-				_textureDecompressed.SetData(decompressed);
+				_textureDecompressed = new Texture2D(GraphicsDevice, ir.Width, ir.Height, false, SurfaceFormat.Dxt5);
+				_textureDecompressed.SetData(compressedData);
 			}
 		}
 

@@ -46,7 +46,7 @@ namespace StbSharp
 			}
 		}
 
-		public static byte[] stb_compress_dxt(int width, int height, byte[] data, bool hasAlpha = true, CompressionMode mode = CompressionMode.None)
+		private static byte[] CompressDxt(int width, int height, byte[] data, bool hasAlpha, CompressionMode mode)
 		{
 			if (data.Length != width * height * 4)
 			{
@@ -54,7 +54,8 @@ namespace StbSharp
 			}
 
 			var osize = hasAlpha ? 16 : 8;
-			var result = new byte[(width + 3) * (height + 3) * osize / 16];
+			var result = new byte[width * height * osize / 16];
+			byte* block = stackalloc byte[16 * 4];
 
 			fixed (byte* rgba = data)
 			{
@@ -62,46 +63,16 @@ namespace StbSharp
 				{
 					var p = resultPtr;
 
-					byte* block = stackalloc byte[16 * 4];
 					for (var j = 0; j < width; j += 4)
 					{
-						var x = 4;
 						for (var i = 0; i < height; i += 4)
 						{
-							if (j + 3 >= width) x = width - j;
-							int y;
-							for (y = 0; y < 4; ++y)
+							for (var y = 0; y < 4; ++y)
 							{
 								if (j + y >= height) break;
-								CRuntime.memcpy(block + y * 16, rgba + width * 4 * (j + y) + i * 4, x * 4);
+								CRuntime.memcpy(block + y * 16, rgba + width * 4 * (j + y) + i * 4, 16);
 							}
-							int y2;
-							if (x < 4)
-							{
-								switch (x)
-								{
-									case 0:
-										throw new Exception("Unknown error");
-									case 1:
-										for (y2 = 0; y2 < y; ++y2)
-										{
-											CRuntime.memcpy(block + y2 * 16 + 1 * 4, block + y2 * 16 + 0 * 4, 4);
-											CRuntime.memcpy(block + y2 * 16 + 2 * 4, block + y2 * 16 + 0 * 4, 8);
-										}
-										break;
-									case 2:
-										for (y2 = 0; y2 < y; ++y2)
-											CRuntime.memcpy(block + y2 * 16 + 2 * 4, block + y2 * 16 + 0 * 4, 8);
-										break;
-									case 3:
-										for (y2 = 0; y2 < y; ++y2)
-											CRuntime.memcpy(block + y2 * 16 + 3 * 4, block + y2 * 16 + 1 * 4, 4);
-										break;
-								}
-							}
-							y2 = 0;
-							for (; y < 4; ++y, ++y2)
-								CRuntime.memcpy(block + y * 16, block + y2 * 16, 4 * 4);
+
 							stb_compress_dxt_block(p, block, hasAlpha ? 1 : 0, (int)mode);
 							p += hasAlpha ? 16 : 8;
 						}
@@ -110,6 +81,16 @@ namespace StbSharp
 			}
 
 			return result;
+		}
+
+		public static byte[] CompressDxt1(int width, int height, byte[] data)
+		{
+			return CompressDxt(width, height, data, false, CompressionMode.Dithered);
+		}
+
+		public static byte[] CompressDxt5(int width, int height, byte[] data)
+		{
+			return CompressDxt(width, height, data, true, CompressionMode.HighQuality);
 		}
 	}
 }
