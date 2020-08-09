@@ -7,7 +7,7 @@ C# port of stb_dxt.h
 ```c#
     using (var stream = TitleContainer.OpenStream("image.png"))
     {
-      // Load the image using StbImageSharp
+      // Load the image using StbImageSharp(https://github.com/StbSharp/StbImageSharp)
       var ir = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
 
       // Compress it using StbDxtSharp
