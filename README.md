@@ -5,18 +5,18 @@ C# port of stb_dxt.h
 
 # FNA/MonoGame Sample Code
 ```c#
-    using (var stream = TitleContainer.OpenStream("image.png"))
-    {
-      // Load the image using StbImageSharp(https://github.com/StbSharp/StbImageSharp)
-      var ir = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
+using (var stream = TitleContainer.OpenStream("image.png"))
+{
+    // Load the image using StbImageSharp(https://github.com/StbSharp/StbImageSharp)
+    var ir = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
 
-      // Compress it using StbDxtSharp
-      var compressedData = StbDxt.CompressDxt5(ir.Width, ir.Height, ir.Data);
+    // Compress it using StbDxtSharp
+    var compressedData = StbDxt.CompressDxt5(ir.Width, ir.Height, ir.Data);
 
-      // Create texture from the compressed data
-      _texture = new Texture2D(GraphicsDevice, ir.Width, ir.Height, false, SurfaceFormat.Dxt5);
-      _texture.SetData(compressedData);
-    }
+    // Create texture from the compressed data
+    _texture = new Texture2D(GraphicsDevice, ir.Width, ir.Height, false, SurfaceFormat.Dxt5);
+    _texture.SetData(compressedData);
+}
 ```
 
 # License
