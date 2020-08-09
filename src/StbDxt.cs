@@ -47,7 +47,7 @@ namespace StbDxtSharp
 			}
 		}
 
-		private static byte[] CompressDxt(int width, int height, byte[] data, bool hasAlpha, CompressionMode mode)
+		public static byte[] CompressDxt(int width, int height, byte[] data, bool hasAlpha, CompressionMode mode)
 		{
 			if (data.Length != width * height * 4)
 			{
