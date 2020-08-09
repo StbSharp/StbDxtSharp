@@ -6,15 +6,11 @@ C# port of stb_dxt.h
 # Adding Reference
 There are two ways of referencing StbDxtSharp in the project:
 1. Through nuget: `install-package StbDxtSharp`
-2. As submodule:
-    
-    a. `git submodule add https://github.com/StbSharp/StbDxtSharp.git`
-    
-    b. Now there are two options:
+2. As source code. There are two options:
        
-      * Add src/StbDxtSharp.csproj to the solution
+      a. Add src/StbDxtSharp.csproj to the solution
        
-      * Include *.cs from folder "src" directly in the project. In this case, it might make sense to add STBSHARP_INTERNAL build compilation symbol to the project, so StbDxtSharp classes would become internal.
+      b. Include *.cs from folder "src" directly in the project. In this case, it might make sense to add STBSHARP_INTERNAL build compilation symbol to the project, so StbDxtSharp classes would become internal.
 
 # FNA/MonoGame Sample Code
 ```c#
