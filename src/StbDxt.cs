@@ -3,14 +3,24 @@
 namespace StbDxtSharp
 {
 	[Flags]
-	public enum CompressionMode
+#if !STBSHARP_INTERNAL
+	public
+#else
+	internal
+#endif
+	enum CompressionMode
 	{
 		None = 0,
 		Dithered = 1,
 		HighQuality = 2
 	}
 
-	public static unsafe partial class StbDxt
+#if !STBSHARP_INTERNAL
+	public
+#else
+	internal
+#endif
+	static unsafe partial class StbDxt
 	{
 		public static void stb__DitherBlock(byte* dest, byte* block)
 		{
