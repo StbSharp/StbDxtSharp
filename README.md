@@ -5,7 +5,7 @@ C# port of stb_dxt.h
 
 # Adding Reference
 There are two ways of referencing StbDxtSharp in the project:
-1. Through nuget: `install-package StbDxtSharp`
+1. Through nuget: https://www.nuget.org/packages/StbDxtSharp/
 2. As source code. There are two options:
        
       a. Add src/StbDxtSharp.csproj to the solution
