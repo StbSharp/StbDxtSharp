@@ -1,7 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using StbDxtSharp;
 using StbImageSharp;
-using StbSharp;
 using StbNative;
 
 namespace ConsoleApp1
@@ -36,7 +36,7 @@ namespace ConsoleApp1
 
 				// Compress it
 				var compressedData = StbDxt.CompressDxt5(ir.Width, ir.Height, ir.Data);
-				//var compressedData = Native.compress_dxt(ir.Data, ir.Width, ir.Height, false);
+				// var compressedData = Native.compress_dxt(ir.Data, ir.Width, ir.Height, true);
 
 				_textureOriginal = new Texture2D(GraphicsDevice, ir.Width, ir.Height);
 				_textureOriginal.SetData(ir.Data);

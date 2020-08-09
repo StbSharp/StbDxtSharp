@@ -14,7 +14,7 @@ using namespace System::Threading;
 
 
 #define STB_DXT_IMPLEMENTATION
-#include "stb_dxt.h"
+#include "../../generation/StbDxtSharp.Generator/stb_dxt.h"
 
 namespace StbNative {
 	public ref class Native

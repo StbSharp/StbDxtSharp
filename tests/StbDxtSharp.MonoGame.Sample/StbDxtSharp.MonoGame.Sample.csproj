@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\StbDxtSharp.csproj" />
     <ProjectReference Include="..\Stb.Native\Stb.Native.vcxproj" />
-    <ProjectReference Include="..\StbDxtSharp\StbDxtSharp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,15 +1,19 @@
-// stb_dxt.h - v1.07 - DXT1/DXT5 compressor - public domain
+// stb_dxt.h - v1.10 - DXT1/DXT5 compressor - public domain
 // original by fabian "ryg" giesen - ported to C by stb
 // use '#define STB_DXT_IMPLEMENTATION' before including to create the implementation
 //
 // USAGE:
 //   call stb_compress_dxt_block() for every block (you must pad)
 //     source should be a 4x4 block of RGBA data in row-major order;
-//     A is ignored if you specify alpha=0; you can turn on dithering
-//     and "high quality" using mode.
+//     Alpha channel is not stored if you specify alpha=0 (but you
+//     must supply some constant alpha in the alpha channel).
+//     You can turn on dithering and "high quality" using mode.
 //
 // version history:
-//   v1.07  - bc4; allow not using libc; add STB_DXT_STATIC
+//   v1.10  - (i.c) various small quality improvements
+//   v1.09  - (stb) update documentation re: surprising alpha channel requirement
+//   v1.08  - (stb) fix bug in dxt-with-alpha block
+//   v1.07  - (stb) bc4; allow not using libc; add STB_DXT_STATIC
 //   v1.06  - (stb) fix to known-broken 1.05
 //   v1.05  - (stb) support bc5/3dc (Arvids Kokins), use extern "C" in C++ (Pavel Krajcevski)
 //   v1.04  - (ryg) default to no rounding bias for lerped colors (as per S3TC/DX10 spec);
@@ -20,21 +24,18 @@
 //   v1.01  - (stb) fix bug converting to RGB that messed up quality, thanks ryg & cbloom
 //   v1.00  - (stb) first release
 //
-// contributors: 
+// contributors:
+//   Rich Geldreich (more accurate index selection)
 //   Kevin Schmidt (#defines for "freestanding" compilation)
 //   github:ppiastucki (BC4 support)
-// 
+//   Ignacio Castano - improve DXT endpoint quantization
+//
 // LICENSE
 //
 //   See end of file for license information.
 
 #ifndef STB_INCLUDE_STB_DXT_H
 #define STB_INCLUDE_STB_DXT_H
-
-// compression mode (bitflags)
-#define STB_DXT_NORMAL    0
-#define STB_DXT_DITHER    1   // use dithering. dubious win. never use for normal maps and the like!
-#define STB_DXT_HIGHQUAL  2   // high quality mode, does two refinement steps instead of 1. ~30-40% slower.
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,15 +47,21 @@ extern "C" {
 #define STBDDEF extern
 #endif
 
+// compression mode (bitflags)
+#define STB_DXT_NORMAL    0
+#define STB_DXT_DITHER    1   // use dithering. dubious win. never use for normal maps and the like!
+#define STB_DXT_HIGHQUAL  2   // high quality mode, does two refinement steps instead of 1. ~30-40% slower.
+
 STBDDEF void stb_compress_dxt_block(unsigned char *dest, const unsigned char *src_rgba_four_bytes_per_pixel, int alpha, int mode);
 STBDDEF void stb_compress_bc4_block(unsigned char *dest, const unsigned char *src_r_one_byte_per_pixel);
 STBDDEF void stb_compress_bc5_block(unsigned char *dest, const unsigned char *src_rg_two_byte_per_pixel);
 
+#define STB_COMPRESS_DXT_BLOCK
+
 #ifdef __cplusplus
 }
 #endif
-
-#define STB_COMPRESS_DXT_BLOCK
+#endif // STB_INCLUDE_STB_DXT_H
 
 #ifdef STB_DXT_IMPLEMENTATION
 
@@ -64,7 +71,7 @@ STBDDEF void stb_compress_bc5_block(unsigned char *dest, const unsigned char *sr
 // STB_DXT_USE_ROUNDING_BIAS
 //     use a rounding bias during color interpolation. this is closer to what "ideal"
 //     interpolation would do but doesn't match the S3TC/DX10 spec. old versions (pre-1.03)
-//     implicitly had this turned on. 
+//     implicitly had this turned on.
 //
 //     in case you're targeting a specific type of hardware (e.g. console programmers):
 //     NVidia and Intel GPUs (as of 2010) as well as DX9 ref use DXT decoders that are closer
@@ -86,13 +93,17 @@ STBDDEF void stb_compress_bc5_block(unsigned char *dest, const unsigned char *sr
 #define STBD_FABS(x)          fabs(x)
 #endif
 
+#ifndef STBD_MEMSET
+#include <string.h>
+#define STBD_MEMSET           memset
+#endif
+
 static unsigned char stb__Expand5[32];
 static unsigned char stb__Expand6[64];
 static unsigned char stb__OMatch5[512];
 static unsigned char stb__OMatch6[512];
 static unsigned char stb__QuantRBTab[256+16];
 static unsigned char stb__QuantGTab[256+16];
-static int init = 1;
 
 static int stb__Mul8Bit(int a, int b)
 {
@@ -114,7 +125,7 @@ static void stb__From16Bit(unsigned char *out, unsigned short v)
 
 static unsigned short stb__As16Bit(int r, int g, int b)
 {
-   return (stb__Mul8Bit(r,31) << 11) + (stb__Mul8Bit(g,63) << 5) + stb__Mul8Bit(b,31);
+   return (unsigned short)((stb__Mul8Bit(r,31) << 11) + (stb__Mul8Bit(g,63) << 5) + stb__Mul8Bit(b,31));
 }
 
 // linear interpolation at 1/3 point between a and b, using desired rounding type
@@ -133,9 +144,9 @@ static int stb__Lerp13(int a, int b)
 // lerp RGB color
 static void stb__Lerp13RGB(unsigned char *out, unsigned char *p1, unsigned char *p2)
 {
-   out[0] = stb__Lerp13(p1[0], p2[0]);
-   out[1] = stb__Lerp13(p1[1], p2[1]);
-   out[2] = stb__Lerp13(p1[2], p2[2]);
+   out[0] = (unsigned char)stb__Lerp13(p1[0], p2[0]);
+   out[1] = (unsigned char)stb__Lerp13(p1[1], p2[1]);
+   out[2] = (unsigned char)stb__Lerp13(p1[2], p2[2]);
 }
 
 /****************************************************************************/
@@ -151,17 +162,17 @@ static void stb__PrepareOptTable(unsigned char *Table,const unsigned char *expan
             int mine = expand[mn];
             int maxe = expand[mx];
             int err = STBD_ABS(stb__Lerp13(maxe, mine) - i);
-            
+
             // DX10 spec says that interpolation must be within 3% of "correct" result,
             // add this as error term. (normally we'd expect a random distribution of
             // +-1.5% error, but nowhere in the spec does it say that the error has to be
             // unbiased - better safe than sorry).
             err += STBD_ABS(maxe - mine) * 3 / 100;
-            
+
             if(err < bestErr)
-            { 
-               Table[i*2+0] = mx;
-               Table[i*2+1] = mn;
+            {
+               Table[i*2+0] = (unsigned char)mx;
+               Table[i*2+1] = (unsigned char)mn;
                bestErr = err;
             }
          }
@@ -184,11 +195,11 @@ static void stb__DitherBlock(unsigned char *dest, unsigned char *block)
   int err[8],*ep1 = err,*ep2 = err+4, *et;
   int ch,y;
 
-  // process channels seperately
+  // process channels separately
   for (ch=0; ch<3; ++ch) {
       unsigned char *bp = block+ch, *dp = dest+ch;
       unsigned char *quant = (ch == 1) ? stb__QuantGTab+8 : stb__QuantRBTab+8;
-      memset(err, 0, sizeof(err));
+      STBD_MEMSET(err, 0, sizeof(err));
       for(y=0; y<4; ++y) {
          dp[ 0] = quant[bp[ 0] + ((3*ep2[1] + 5*ep2[0]) >> 4)];
          ep1[0] = bp[ 0] - dp[ 0];
@@ -200,7 +211,7 @@ static void stb__DitherBlock(unsigned char *dest, unsigned char *block)
          ep1[3] = bp[12] - dp[12];
          bp += 16;
          dp += 16;
-		 et = ep1; ep1 = ep2; ep2 = et; // swap
+         et = ep1, ep1 = ep2, ep2 = et; // swap
       }
    }
 }
@@ -230,15 +241,15 @@ static unsigned int stb__MatchColorsBlock(unsigned char *block, unsigned char *c
    // relying on this 1d approximation isn't always optimal in terms of euclidean distance,
    // but it's very close and a lot faster.
    // http://cbloomrants.blogspot.com/2008/12/12-08-08-dxtc-summary.html
-   
-   c0Point   = (stops[1] + stops[3]) >> 1;
-   halfPoint = (stops[3] + stops[2]) >> 1;
-   c3Point   = (stops[2] + stops[0]) >> 1;
+
+   c0Point   = (stops[1] + stops[3]);
+   halfPoint = (stops[3] + stops[2]);
+   c3Point   = (stops[2] + stops[0]);
 
    if(!dither) {
       // the version without dithering is straightforward
       for (i=15;i>=0;i--) {
-         int dot = dots[i];
+         int dot = dots[i]*2;
          mask <<= 2;
 
          if(dot < halfPoint)
@@ -251,9 +262,9 @@ static unsigned int stb__MatchColorsBlock(unsigned char *block, unsigned char *c
       int err[8],*ep1 = err,*ep2 = err+4;
       int *dp = dots, y;
 
-      c0Point   <<= 4;
-      halfPoint <<= 4;
-      c3Point   <<= 4;
+      c0Point   <<= 3;
+      halfPoint <<= 3;
+      c3Point   <<= 3;
       for(i=0;i<8;i++)
          err[i] = 0;
 
@@ -303,13 +314,13 @@ static unsigned int stb__MatchColorsBlock(unsigned char *block, unsigned char *c
 }
 
 // The color optimization function. (Clever code, part 1)
+static const int nIterPower = 4;
 static void stb__OptimizeColorsBlock(unsigned char *block, unsigned short *pmax16, unsigned short *pmin16)
 {
   int mind = 0x7fffffff,maxd = -0x7fffffff;
   unsigned char *minp, *maxp;
   double magn;
   int v_r,v_g,v_b;
-  static const int nIterPower = 4;
   float covf[6],vfr,vfg,vfb;
 
   // determine color distribution
@@ -407,25 +418,48 @@ static void stb__OptimizeColorsBlock(unsigned char *block, unsigned short *pmax1
    *pmin16 = stb__As16Bit(minp[0],minp[1],minp[2]);
 }
 
-static int stb__sclamp(float y, int p0, int p1)
+static const float midpoints5[32] = {
+   0.015686f, 0.047059f, 0.078431f, 0.111765f, 0.145098f, 0.176471f, 0.207843f, 0.241176f, 0.274510f, 0.305882f, 0.337255f, 0.370588f, 0.403922f, 0.435294f, 0.466667f, 0.5f,
+   0.533333f, 0.564706f, 0.596078f, 0.629412f, 0.662745f, 0.694118f, 0.725490f, 0.758824f, 0.792157f, 0.823529f, 0.854902f, 0.888235f, 0.921569f, 0.952941f, 0.984314f, 1.0f
+};
+
+static const float midpoints6[64] = {
+   0.007843f, 0.023529f, 0.039216f, 0.054902f, 0.070588f, 0.086275f, 0.101961f, 0.117647f, 0.133333f, 0.149020f, 0.164706f, 0.180392f, 0.196078f, 0.211765f, 0.227451f, 0.245098f,
+   0.262745f, 0.278431f, 0.294118f, 0.309804f, 0.325490f, 0.341176f, 0.356863f, 0.372549f, 0.388235f, 0.403922f, 0.419608f, 0.435294f, 0.450980f, 0.466667f, 0.482353f, 0.500000f,
+   0.517647f, 0.533333f, 0.549020f, 0.564706f, 0.580392f, 0.596078f, 0.611765f, 0.627451f, 0.643137f, 0.658824f, 0.674510f, 0.690196f, 0.705882f, 0.721569f, 0.737255f, 0.754902f,
+   0.772549f, 0.788235f, 0.803922f, 0.819608f, 0.835294f, 0.850980f, 0.866667f, 0.882353f, 0.898039f, 0.913725f, 0.929412f, 0.945098f, 0.960784f, 0.976471f, 0.992157f, 1.0f
+};
+
+static unsigned short stb__Quantize5(float x)
 {
-   int x = (int) y;
-   if (x < p0) return p0;
-   if (x > p1) return p1;
-   return x;
+   unsigned short q;
+   x = x < 0 ? 0 : x > 1 ? 1 : x;  // saturate
+   q = (unsigned short)(x * 31);
+   q += (x > midpoints5[q]);
+   return q;
 }
+
+static unsigned short stb__Quantize6(float x)
+{
+   unsigned short q;
+   x = x < 0 ? 0 : x > 1 ? 1 : x;  // saturate
+   q = (unsigned short)(x * 63);
+   q += (x > midpoints6[q]);
+   return q;
+}
+
+static const int w1Tab[4] = { 3,0,2,1 };
+static const int prods[4] = { 0x090000,0x000900,0x040102,0x010402 };
 
 // The refinement function. (Clever code, part 2)
 // Tries to optimize colors to suit block contents better.
 // (By solving a least squares system via normal equations+Cramer's rule)
 static int stb__RefineBlock(unsigned char *block, unsigned short *pmax16, unsigned short *pmin16, unsigned int mask)
 {
-   static const int w1Tab[4] = { 3,0,2,1 };
-   static const int prods[4] = { 0x090000,0x000900,0x040102,0x010402 };
    // ^some magic to save a lot of multiplies in the accumulating loop...
    // (precomputed products of weights for least squares system, accumulated inside one 32-bit register)
 
-   float frb,fg;
+   float f;
    unsigned short oldMin, oldMax, min16, max16;
    int i, akku = 0, xx,xy,yy;
    int At1_r,At1_g,At1_b;
@@ -448,8 +482,8 @@ static int stb__RefineBlock(unsigned char *block, unsigned short *pmax16, unsign
 
       r >>= 4; g >>= 4; b >>= 4;
 
-      max16 = (stb__OMatch5[r]<<11) | (stb__OMatch6[g]<<5) | stb__OMatch5[b];
-      min16 = (stb__OMatch5[r + 256]<<11) | (stb__OMatch6[g + 256]<<5) | stb__OMatch5[b + 256];
+      max16 = (stb__OMatch5[r * 2 + 0]<<11) | (stb__OMatch6[g * 2 + 0]<<5) | stb__OMatch5[b * 2 + 0];
+      min16 = (stb__OMatch5[r * 2 + 1]<<11) | (stb__OMatch6[g * 2 + 1]<<5) | stb__OMatch5[b * 2 + 1];
    } else {
       At1_r = At1_g = At1_b = 0;
       At2_r = At2_g = At2_b = 0;
@@ -478,17 +512,15 @@ static int stb__RefineBlock(unsigned char *block, unsigned short *pmax16, unsign
       yy = (akku >> 8) & 0xff;
       xy = (akku >> 0) & 0xff;
 
-      frb = 3.0f * 31.0f / 255.0f / (xx*yy - xy*xy);
-      fg = frb * 63.0f / 31.0f;
+      f = 3.0f / 255.0f / (xx*yy - xy*xy);
 
-      // solve.
-      max16 =   stb__sclamp((At1_r*yy - At2_r*xy)*frb+0.5f,0,31) << 11;
-      max16 |=  stb__sclamp((At1_g*yy - At2_g*xy)*fg +0.5f,0,63) << 5;
-      max16 |=  stb__sclamp((At1_b*yy - At2_b*xy)*frb+0.5f,0,31) << 0;
+      max16 =  stb__Quantize5((At1_r*yy - At2_r * xy) * f) << 11;
+      max16 |= stb__Quantize6((At1_g*yy - At2_g * xy) * f) << 5;
+      max16 |= stb__Quantize5((At1_b*yy - At2_b * xy) * f) << 0;
 
-      min16 =   stb__sclamp((At2_r*xx - At1_r*xy)*frb+0.5f,0,31) << 11;
-      min16 |=  stb__sclamp((At2_g*xx - At1_g*xy)*fg +0.5f,0,63) << 5;
-      min16 |=  stb__sclamp((At2_b*xx - At1_b*xy)*frb+0.5f,0,31) << 0;
+      min16 =  stb__Quantize5((At2_r*xx - At1_r * xy) * f) << 11;
+      min16 |= stb__Quantize6((At2_g*xx - At1_g * xy) * f) << 5;
+      min16 |= stb__Quantize5((At2_b*xx - At1_b * xy) * f) << 0;
    }
 
    *pmin16 = min16;
@@ -505,9 +537,9 @@ static void stb__CompressColorBlock(unsigned char *dest, unsigned char *block, i
    int refinecount;
    unsigned short max16, min16;
    unsigned char dblock[16*4],color[4*4];
-   
+
    dither = mode & STB_DXT_DITHER;
-   refinecount = (mode & STB_DXT_HIGHQUAL) != 0 ? 2 : 1;
+   refinecount = (mode & STB_DXT_HIGHQUAL) ? 2 : 1;
 
    // check if block is constant
    for (i=1;i<16;i++)
@@ -517,8 +549,8 @@ static void stb__CompressColorBlock(unsigned char *dest, unsigned char *block, i
    if(i == 16) { // constant color
       int r = block[0], g = block[1], b = block[2];
       mask  = 0xaaaaaaaa;
-      max16 = (stb__OMatch5[r]<<11) | (stb__OMatch6[g]<<5) | stb__OMatch5[b];
-	  min16 = (stb__OMatch5[r + 256] << 11) | (stb__OMatch6[g + 256] << 5) | stb__OMatch5[b + 256];
+      max16 = (stb__OMatch5[r * 2 + 0]<<11) | (stb__OMatch6[g * 2 + 0]<<5) | stb__OMatch5[b * 2 + 0];
+      min16 = (stb__OMatch5[r * 2 + 1]<<11) | (stb__OMatch6[g * 2 + 1]<<5) | stb__OMatch5[b * 2 + 1];
    } else {
       // first step: compute dithered version for PCA if desired
       if(dither)
@@ -535,7 +567,7 @@ static void stb__CompressColorBlock(unsigned char *dest, unsigned char *block, i
       // third step: refine (multiple times if requested)
       for (i=0;i<refinecount;i++) {
          unsigned int lastmask = mask;
-         
+
          if (stb__RefineBlock(dither ? dblock : block,&max16,&min16,mask)) {
             if (max16 != min16) {
                stb__EvalColors(color,max16,min16);
@@ -545,7 +577,7 @@ static void stb__CompressColorBlock(unsigned char *dest, unsigned char *block, i
                break;
             }
          }
-         
+
          if(mask == lastmask)
             break;
       }
@@ -586,8 +618,8 @@ static void stb__CompressAlphaBlock(unsigned char *dest,unsigned char *src, int 
    }
 
    // encode them
-   ((unsigned char *)dest)[0] = mx;
-   ((unsigned char *)dest)[1] = mn;
+   dest[0] = (unsigned char)mx;
+   dest[1] = (unsigned char)mn;
    dest += 2;
 
    // determine bias and emit color indices
@@ -598,8 +630,9 @@ static void stb__CompressAlphaBlock(unsigned char *dest,unsigned char *src, int 
    dist2 = dist*2;
    bias = (dist < 8) ? (dist - 1) : (dist/2 + 2);
    bias -= mn * 7;
-   bits = 0; mask = 0;
-   
+   bits = 0;
+   mask = 0;
+
    for (i=0;i<16;i++) {
       int a = src[i*stride]*7 + bias;
       int ind,t;
@@ -608,7 +641,7 @@ static void stb__CompressAlphaBlock(unsigned char *dest,unsigned char *src, int 
       t = (a >= dist4) ? -1 : 0; ind =  t & 4; a -= dist4 & t;
       t = (a >= dist2) ? -1 : 0; ind += t & 2; a -= dist2 & t;
       ind += (a >= dist);
-      
+
       // turn linear scale into DXT index (0/1 are extremal pts)
       ind = -ind & 7;
       ind ^= (2 > ind);
@@ -616,7 +649,7 @@ static void stb__CompressAlphaBlock(unsigned char *dest,unsigned char *src, int 
       // write index
       mask |= ind << bits;
       if((bits += 3) >= 8) {
-         *dest++ = mask;
+         *dest++ = (unsigned char)mask;
          mask >>= 8;
          bits -= 8;
       }
@@ -627,10 +660,10 @@ static void stb__InitDXT()
 {
    int i;
    for(i=0;i<32;i++)
-      stb__Expand5[i] = (i<<3)|(i>>2);
+      stb__Expand5[i] = (unsigned char)((i<<3)|(i>>2));
 
    for(i=0;i<64;i++)
-      stb__Expand6[i] = (i<<2)|(i>>4);
+      stb__Expand6[i] = (unsigned char)((i<<2)|(i>>4));
 
    for(i=0;i<256+16;i++)
    {
@@ -643,16 +676,25 @@ static void stb__InitDXT()
    stb__PrepareOptTable(stb__OMatch6,stb__Expand6,64);
 }
 
+static int init = 1;
 void stb_compress_dxt_block(unsigned char *dest, const unsigned char *src, int alpha, int mode)
 {
+   unsigned char data[16 * 4];
    if (init) {
       stb__InitDXT();
       init=0;
    }
 
    if (alpha) {
+      int i;
       stb__CompressAlphaBlock(dest,(unsigned char*) src+3, 4);
       dest += 8;
+      // make a new copy of the data in which alpha is opaque,
+      // because code uses a fast test for color constancy
+      memcpy(data, src, 4*16);
+      for (i=0; i < 16; ++i)
+         data[i * 4 + 3] = 255;
+      src = data;
    }
 
    stb__CompressColorBlock(dest,(unsigned char*) src,mode);
@@ -669,7 +711,6 @@ void stb_compress_bc5_block(unsigned char *dest, const unsigned char *src)
    stb__CompressAlphaBlock(dest + 8,(unsigned char*) src+1,2);
 }
 #endif // STB_DXT_IMPLEMENTATION
-#endif // STB_INCLUDE_STB_DXT_H
 
 /*
 ------------------------------------------------------------------------------
@@ -677,38 +718,38 @@ This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
 Copyright (c) 2017 Sean Barrett
-Permission is hereby granted, free of charge, to any person obtaining a copy of 
-this software and associated documentation files (the "Software"), to deal in 
-the Software without restriction, including without limitation the rights to 
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
-of the Software, and to permit persons to whom the Software is furnished to do 
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
 so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in all 
+The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ------------------------------------------------------------------------------
 ALTERNATIVE B - Public Domain (www.unlicense.org)
 This is free and unencumbered software released into the public domain.
-Anyone is free to copy, modify, publish, use, compile, sell, or distribute this 
-software, either in source code form or as a compiled binary, for any purpose, 
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
 commercial or non-commercial, and by any means.
-In jurisdictions that recognize copyright laws, the author or authors of this 
-software dedicate any and all copyright interest in the software to the public 
-domain. We make this dedication for the benefit of the public at large and to 
-the detriment of our heirs and successors. We intend this dedication to be an 
-overt act of relinquishment in perpetuity of all present and future rights to 
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
 this software under copyright law.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
-AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN 
-ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------
 */

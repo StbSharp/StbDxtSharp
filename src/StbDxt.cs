@@ -1,7 +1,8 @@
 ﻿using System;
 
-namespace StbSharp
+namespace StbDxtSharp
 {
+	[Flags]
 	public enum CompressionMode
 	{
 		None = 0,
@@ -83,14 +84,14 @@ namespace StbSharp
 			return result;
 		}
 
-		public static byte[] CompressDxt1(int width, int height, byte[] data)
+		public static byte[] CompressDxt1(int width, int height, byte[] data, CompressionMode mode = CompressionMode.None)
 		{
-			return CompressDxt(width, height, data, false, CompressionMode.None);
+			return CompressDxt(width, height, data, false, mode);
 		}
 
-		public static byte[] CompressDxt5(int width, int height, byte[] data)
+		public static byte[] CompressDxt5(int width, int height, byte[] data, CompressionMode mode = CompressionMode.None)
 		{
-			return CompressDxt(width, height, data, true, CompressionMode.None);
+			return CompressDxt(width, height, data, true, mode);
 		}
 	}
 }
