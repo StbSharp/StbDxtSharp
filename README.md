@@ -18,3 +18,6 @@ C# port of stb_dxt.h
       _texture.SetData(compressedData);
     }
 ```
+
+# License
+Public Domain
