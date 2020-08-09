@@ -12,7 +12,7 @@ build_script:
 - cmd: >-
     build_all.bat
 artifacts:
-  - path: src/StbDxtSharp/bin/Release/StbDxtSharp.$(appveyor_build_version).nupkg
+  - path: src/bin/Release/StbDxtSharp.$(appveyor_build_version).nupkg
     name: StbDxtSharp.nupkg
 deploy:
   - provider: NuGet	
